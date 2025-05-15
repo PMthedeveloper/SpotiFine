@@ -1,0 +1,1486 @@
+<script type="text/javascript">
+        var gk_isXlsx = false;
+        var gk_xlsxFileLookup = {};
+        var gk_fileData = {};
+        function filledCell(cell) {
+          return cell !== '' && cell != null;
+        }
+        function loadFileData(filename) {
+        if (gk_isXlsx && gk_xlsxFileLookup[filename]) {
+            try {
+                var workbook = XLSX.read(gk_fileData[filename], { type: 'base64' });
+                var firstSheetName = workbook.SheetNames[0];
+                var worksheet = workbook.Sheets[firstSheetName];
+
+                // Convert sheet to JSON to filter blank rows
+                var jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, blankrows: false, defval: '' });
+                // Filter out blank rows (rows where all cells are empty, null, or undefined)
+                var filteredData = jsonData.filter(row => row.some(filledCell));
+
+                // Heuristic to find the header row by ignoring rows with fewer filled cells than the next row
+                var headerRowIndex = filteredData.findIndex((row, index) =>
+                  row.filter(filledCell).length >= filteredData[index + 1]?.filter(filledCell).length
+                );
+                // Fallback
+                if (headerRowIndex === -1 || headerRowIndex > 25) {
+                  headerRowIndex = 0;
+                }
+
+                // Convert filtered JSON back to CSV
+                var csv = XLSX.utils.aoa_to_sheet(filteredData.slice(headerRowIndex)); // Create a new sheet from filtered array of arrays
+                csv = XLSX.utils.sheet_to_csv(csv, { header: 1 });
+                return csv;
+            } catch (e) {
+                console.error(e);
+                return "";
+            }
+        }
+        return gk_fileData[filename] || "";
+        }
+        </script><script type="text/javascript">
+    var gk_fileData = {};
+    function loadFileData(filename) {
+      return gk_fileData[filename] || "";
+    }
+</script>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SpotiFine Mockup</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.3.1/umd/react.production.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.3.1/umd/react-dom.production.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.25.6/babel.min.js"></script>
+</head>
+<body class="bg-gray-900 text-white font-sans">
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+
+        // Mock data
+        const initialData = {
+            recentlyPlayed: [
+                { id: 1, title: "Song 1", artist: "Artist A", genre: "Pop", releaseDate: "2023-01-01", tempo: 120 },
+                { id: 2, title: "Song 2", artist: "Artist B", genre: "Rock", releaseDate: "2022-06-15", tempo: 140 },
+                { id: 3, title: "Song 3", artist: "Artist C", genre: "Jazz", releaseDate: "2021-09-20", tempo: 100 }
+            ],
+            favoriteAlbums: [
+                { id: 1, title: "Album X", artist: "Artist A", genre: "Pop" },
+                { id: 2, title: "Album Y", artist: "Artist B", genre: "Rock" }
+            ],
+            playlists: [
+                {
+                    id: 1,
+                    name: "Playlist 1",
+                    songs: [
+                        { id: 1, title: "Song A", artist: "Artist X", genre: "Pop", releaseDate: "2023-02-01", tempo: 130 },
+                        { id: 2, title: "Song B", artist: "Artist Y", genre: "Rock", releaseDate: "2022-07-10", tempo: 150 }
+                    ],
+                    rules: [{ id: 1, type: "genre", value: "Pop" }],
+                    maxSize: 50,
+                    lastUpdated: "2025-04-10",
+                    ruleHistory: ["Applied genre:Pop on 2025-04-10"]
+                },
+                { id: 2, name: "Playlist 2", songs: [], rules: [], maxSize: 50, lastUpdated: null, ruleHistory: [] }
+            ],
+            favorites: [
+                { id: 1, title: "Song 1", artist: "Artist A", genre: "Pop" },
+                { id: 2, title: "Song 2", artist: "Artist B", genre: "Rock" }
+            ],
+            favoritePlaylists: [], // New array to store favorite playlist IDs
+            availableSongs: [
+                { id: 4, title: "Song 4", artist: "Artist D", genre: "Hip-Hop", releaseDate: "2023-03-01", tempo: 110 },
+                { id: 5, title: "Song 5", artist: "Artist E", genre: "Electronic", releaseDate: "2022-12-01", tempo: 128 },
+                { id: 6, title: "Song 6", artist: "Artist F", genre: "Jazz", releaseDate: "2021-11-01", tempo: 90 },
+                { id: 7, title: "Song 7", artist: "Artist A", genre: "Pop", releaseDate: "2023-04-01", tempo: 125 },
+                { id: 8, title: "Song 8", artist: "Artist B", genre: "Rock", releaseDate: "2022-08-01", tempo: 135 },
+                { id: 9, title: "Song 9", artist: "Artist C", genre: "Jazz", releaseDate: "2021-10-01", tempo: 95 }
+            ],
+            availableAlbums: [
+                { id: 3, title: "Album Z", artist: "Artist C", genre: "Jazz" },
+                { id: 4, title: "Album W", artist: "Artist D", genre: "Hip-Hop" }
+            ],
+            ruleTemplates: [
+                { id: 1, name: "Pop Hits", rules: [{ type: "genre", value: "Pop" }] },
+                { id: 2, name: "Rock Classics", rules: [{ type: "genre", value: "Rock" }] }
+            ],
+            followedPlaylists: [
+                { id: 3, name: "Top Hits", songs: [{ id: 7, title: "Song 7", artist: "Artist G", genre: "Pop" }], creator: "SpotiFine" }
+            ],
+            availablePlaylists: [
+                { id: 4, name: "Chill Vibes", songs: [{ id: 8, title: "Song 8", artist: "Artist H", genre: "Electronic" }], creator: "SpotiFine" },
+                { id: 5, name: "Rock Anthems", songs: [{ id: 9, title: "Song 9", artist: "Artist I", genre: "Rock" }], creator: "SpotiFine" }
+            ],
+            followedArtists: [
+                { id: 1, name: "Artist A", genre: "Pop" }
+            ],
+            availableArtists: [
+                { id: 2, name: "Artist B", genre: "Rock" },
+                { id: 3, name: "Artist C", genre: "Jazz" },
+                { id: 4, name: "Artist D", genre: "Hip-Hop" }
+            ]
+        };
+
+        // Login Screen (FR01, FR02, FR25, FR26)
+        function LoginScreen({ setIsLoggedIn }) {
+            const [error, setError] = useState("");
+            const handleLogin = () => {
+                try {
+                    setIsLoggedIn(true);
+                    setError("");
+                } catch (e) {
+                    setError("Failed to log in. Please try again.");
+                }
+            };
+
+            return (
+                <section className="container mx-auto px-4 sm:px-6 py-6 flex flex-col items-center justify-center min-h-screen transition-opacity duration-300 opacity-100">
+                    <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-4">SpotiFine</h1>
+                    <button
+                        onClick={handleLogin}
+                        className="bg-green-500 text-black px-4 sm:px-6 py-2 sm:py-3 rounded-full hover:scale-105 active:scale-95 transition-transform duration-200 text-sm sm:text-base w-full sm:w-auto"
+                    >
+                        Login with Spotify
+                    </button>
+                    {error && <p className="text-red-500 mt-4 text-sm sm:text-base">{error}</p>}
+                </section>
+            );
+        }
+
+        // Sidebar Component
+        function Sidebar({ setCurrentScreen, setIsLoggedIn, isSidebarOpen, setIsSidebarOpen }) {
+            const handleLogout = () => {
+                setIsLoggedIn(false);
+                setCurrentScreen('home');
+                setIsSidebarOpen(false);
+            };
+
+            return (
+                <>
+                    <button
+                        className="md:hidden fixed top-4 left-4 z-50 text-white"
+                        onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+                    >
+                        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d={isSidebarOpen ? "M6 18L18 6M6 6l12 12" : "M4 6h16M4 12h16M4 18h16"} />
+                        </svg>
+                    </button>
+                    <nav className={`fixed left-0 top-0 h-screen bg-gray-800 w-16 md:w-64 transition-transform duration-300 ease-in-out ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0 z-40`}>
+                        <div className="flex flex-col h-full">
+                            <div className="p-4 md:p-6 text-lg md:text-xl font-bold flex items-center">
+                                <svg className="w-6 h-6 mr-2 md:mr-3" fill="currentColor" viewBox="0 0 24 24">
+                                    <path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.6 0 12 0zm0 22.5c-5.8 0-10.5-4.7-10.5-10.5S6.2 1.5 12 1.5 22.5 6.2 22.5 12 17.8 22.5 12 22.5zm3.8-6.6c.2 0 .4 0 .5.2.2.2.2.5 0 .7-1.2 1.7-3.3 2.8-5.6 2.8-3.5 0-6.3-2.3-6.3-5.2 0-2.8 2.8-5.2 6.3-5.2 2.3 0 4.4 1.1 5.6 2.8.2.2.2.5 0 .7-.1.2-.3.2-.5.2-.3 0-.5-.1-.7-.4-1-1.3-2.6-2.1-4.4-2.1-2.8 0-5.1 2-5.1 4.4s2.3 4.4 5.1 4.4c1.8 0 3.4-.8 4.4-2.1.2-.3.4-.4.7-.4z"/>
+                                </svg>
+                                <span className="hidden md:inline">SpotiFine</span>
+                            </div>
+                            <div className="flex flex-col space-y-2 p-2 md:p-4">
+                                <button
+                                    onClick={() => { setCurrentScreen('home'); setIsSidebarOpen(false); }}
+                                    className="flex items-center px-2 md:px-4 py-3 rounded hover:bg-gray-700 hover:scale-105 transition-transform duration-200 text-sm md:text-base"
+                                >
+                                    <svg className="w-5 h-5 md:mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+                                    </svg>
+                                    <span className="hidden md:inline">Home</span>
+                                </button>
+                                <button
+                                    onClick={() => { setCurrentScreen('playlists'); setIsSidebarOpen(false); }}
+                                    className="flex items-center px-2 md:px-4 py-3 rounded hover:bg-gray-700 hover:scale-105 transition-transform duration-200 text-sm md:text-base"
+                                >
+                                    <svg className="w-5 h-5 md:mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3" />
+                                    </svg>
+                                    <span className="hidden md:inline">Playlists</span>
+                                </button>
+                                <button
+                                    onClick={() => { setCurrentScreen('favourites'); setIsSidebarOpen(false); }}
+                                    className="flex items-center px-2 md:px-4 py-3 rounded hover:bg-gray-700 hover:scale-105 transition-transform duration-200 text-sm md:text-base"
+                                >
+                                    <svg className="w-5 h-5 md:mr-3" fill="currentColor" viewBox="0 0 24 24">
+                                        <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
+                                    </svg>
+                                    <span className="hidden md:inline">Favourites</span>
+                                </button>
+                                <button
+                                    onClick={() => { setCurrentScreen('followedPlaylists'); setIsSidebarOpen(false); }}
+                                    className="flex items-center px-2 md:px-4 py-3 rounded hover:bg-gray-700 hover:scale-105 transition-transform duration-200 text-sm md:text-base"
+                                >
+                                    <svg className="w-5 h-5 md:mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
+                                    </svg>
+                                    <span className="hidden md:inline">Followed Playlists</span>
+                                </button>
+                                <button
+                                    onClick={() => { setCurrentScreen('artists'); setIsSidebarOpen(false); }}
+                                    className="flex items-center px-2 md:px-4 py-3 rounded hover:bg-gray-700 hover:scale-105 transition-transform duration-200 text-sm md:text-base"
+                                >
+                                    <svg className="w-5 h-5 md:mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                                    </svg>
+                                    <span className="hidden md:inline">Artists</span>
+                                </button>
+                                <button
+                                    onClick={() => { setCurrentScreen('profile'); setIsSidebarOpen(false); }}
+                                    className="flex items-center px-2 md:px-4 py-3 rounded hover:bg-gray-700 hover:scale-105 transition-transform duration-200 text-sm md:text-base"
+                                >
+                                    <svg className="w-5 h-5 md:mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                                    </svg>
+                                    <span className="hidden md:inline">Profile</span>
+                                </button>
+                                <button
+                                    onClick={handleLogout}
+                                    className="flex items-center px-2 md:px-4 py-3 rounded hover:bg-red-700 hover:scale-105 transition-transform duration-200 text-sm md:text-base"
+                                >
+                                    <svg className="w-5 h-5 md:mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                                    </svg>
+                                    <span className="hidden md:inline">Logout</span>
+                                </button>
+                            </div>
+                        </div>
+                    </nav>
+                </>
+            );
+        }
+
+        // Home Screen (FR03, FR08, FR19, FR05)
+        function HomeScreen({ data, setData, openRuleModal }) {
+            const [songSearch, setSongSearch] = useState("");
+            const filteredSongs = data.recentlyPlayed.filter(song =>
+                song.title.toLowerCase().includes(songSearch.toLowerCase())
+            );
+
+            return (
+                <section className="container mx-auto px-4 sm:px-6 py-6 transition-opacity duration-300 opacity-100 relative">
+                    <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-6">Welcome, User!</h1>
+                    <div className="bg-gray-800 p-4 sm:p-6 rounded-lg">
+                        <h2 className="text-lg sm:text-xl md:text-2xl mb-4">Recently Played</h2>
+                        <input
+                            type="text"
+                            value={songSearch}
+                            onChange={(e) => setSongSearch(e.target.value)}
+                            className="w-full p-2 mb-4 bg-gray-700 rounded text-white text-sm sm:text-base"
+                            placeholder="Search songs..."
+                        />
+                        <ul className="max-h-60 overflow-y-auto">
+                            {filteredSongs.map((song, index) => (
+                                <li key={song.id} className="mb-2 transition-all duration-200">
+                                    <span className="text-sm sm:text-base">{song.title} - {song.artist}</span>
+                                    <p className="text-gray-400 text-xs sm:text-sm">Genre: {song.genre}</p>
+                                </li>
+                            ))}
+                        </ul>
+                    </div>
+                    <button
+                        onClick={openRuleModal}
+                        className="fixed bottom-4 right-4 bg-green-500 text-black p-3 rounded-full hover:scale-105 active:scale-95 transition-transform duration-200 shadow-lg z-50"
+                        title="Create Rule-Based Playlist"
+                    >
+                        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" />
+                        </svg>
+                    </button>
+                </section>
+            );
+        }
+
+        // Playlists Screen (FR04, FR07, FR10, FR11, FR18, FR23)
+        function PlaylistsScreen({ data, setData, openCreateModal, openEditModal, notify, addSongToPlaylist, removeSongFromPlaylist, toggleFavoritePlaylist }) {
+            const [selectedPlaylist, setSelectedPlaylist] = useState(null);
+            const [songSearch, setSongSearch] = useState("");
+            const [playingSongId, setPlayingSongId] = useState(null);
+
+            useEffect(() => {
+                if (selectedPlaylist) {
+                    const updatedPlaylist = data.playlists.find(p => p.id === selectedPlaylist.id);
+                    if (updatedPlaylist) {
+                        setSelectedPlaylist(updatedPlaylist);
+                    } else {
+                        setSelectedPlaylist(null);
+                    }
+                }
+            }, [data.playlists]);
+
+            const deletePlaylist = (id) => {
+                try {
+                    setData({
+                        ...data,
+                        playlists: data.playlists.filter(p => p.id !== id),
+                        favoritePlaylists: data.favoritePlaylists.filter(favId => favId !== id)
+                    });
+                    if (selectedPlaylist?.id === id) setSelectedPlaylist(null);
+                    notify(`Playlist deleted.`);
+                } catch (e) {
+                    console.error('Error deleting playlist:', e);
+                    notify('Failed to delete playlist.');
+                }
+            };
+
+            const playSong = (song) => {
+                if (playingSongId === song.id) {
+                    setPlayingSongId(null);
+                    console.log(`Stopped: ${song.title} - ${song.artist}`);
+                } else {
+                    setPlayingSongId(song.id);
+                    console.log(`Playing: ${song.title} - ${song.artist}`);
+                }
+            };
+
+            const filteredSongs = data.availableSongs.filter(song =>
+                song.title.toLowerCase().includes(songSearch.toLowerCase())
+            );
+
+            return (
+                <section className="container mx-auto px-4 sm:px-6 py-6 transition-opacity duration-300 opacity-100">
+                    <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-6">Your Playlists</h1>
+                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
+                        <h2 className="text-lg sm:text-xl md:text-2xl">Manage Playlists</h2>
+                        <button
+                            onClick={openCreateModal}
+                            className="bg-green-500 text-black px-4 py-2 rounded hover:scale-105 active:scale-95 transition-transform duration-200 text-sm sm:text-base w-full sm:w-auto"
+                        >
+                            Create Playlist
+                        </button>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+                        {data.playlists.map((playlist) => (
+                            <div
+                                key={playlist.id}
+                                className={`bg-gray-800 p-4 sm:p-6 rounded-lg cursor-pointer hover:scale-105 transition-all duration-200 ${selectedPlaylist?.id === playlist.id ? 'border-2 border-green-500' : ''}`}
+                                onClick={() => setSelectedPlaylist(playlist)}
+                            >
+                                <h3 className="text-base sm:text-lg md:text-xl font-semibold">{playlist.name}</h3>
+                                <p className="text-gray-400 text-xs sm:text-sm">{playlist.songs.length}/{playlist.maxSize} songs</p>
+                                <div className="mt-4 flex flex-wrap gap-2">
+                                    <button
+                                        onClick={(e) => { e.stopPropagation(); openEditModal(playlist); }}
+                                        className="bg-yellow-500 px-3 py-1 rounded hover:scale-105 active:scale-95 transition-transform duration-200 text-xs sm:text-sm"
+                                    >
+                                        Edit
+                                    </button>
+                                    <button
+                                        onClick={(e) => { e.stopPropagation(); deletePlaylist(playlist.id); }}
+                                        className="bg-red-500 px-3 py-1 rounded hover:scale-105 active:scale-95 transition-transform duration-200 text-xs sm:text-sm"
+                                    >
+                                        Delete
+                                    </button>
+                                    <button
+                                        onClick={(e) => { e.stopPropagation(); toggleFavoritePlaylist(playlist.id); }}
+                                        className={`px-3 py-1 rounded hover:scale-105 active:scale-95 transition-transform duration-200 text-xs sm:text-sm ${data.favoritePlaylists.includes(playlist.id) ? 'bg-pink-500' : 'bg-gray-500'}`}
+                                        title={data.favoritePlaylists.includes(playlist.id) ? "Remove from Favorites" : "Add to Favorites"}
+                                    >
+                                        <svg className="w-4 h-4 inline" fill={data.favoritePlaylists.includes(playlist.id) ? "currentColor" : "none"} stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
+                                        </svg>
+                                    </button>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                    {selectedPlaylist && (
+                        <div className="mt-6 bg-gray-800 p-4 sm:p-6 rounded-lg transition-all duration-200">
+                            <h2 className="text-lg sm:text-xl md:text-2xl mb-4">Selected: {selectedPlaylist.name}</h2>
+                            <h3 className="text-base sm:text-lg md:text-xl mb-2">Songs</h3>
+                            <ul className="mb-4 max-h-60 overflow-y-auto">
+                                {selectedPlaylist.songs.length > 0 ? (
+                                    selectedPlaylist.songs.map((song, index) => (
+                                        <li
+                                            key={`${song.id}-${index}`}
+                                            className="mb-2 flex justify-between items-center transition-all duration-200"
+                                        >
+                                            <span className="text-sm sm:text-base">{song.title} - {song.artist}</span>
+                                            <div className="flex space-x-2">
+                                                <button
+                                                    onClick={() => playSong(song)}
+                                                    className={`px-3 py-1 rounded text-xs sm:text-sm transition-all duration-200 ${playingSongId === song.id ? 'bg-green-600' : 'bg-green-500 text-black hover:scale-105 active:scale-95'}`}
+                                                >
+                                                    {playingSongId === song.id ? 'Playing' : 'Play'}
+                                                </button>
+                                                <button
+                                                    onClick={() => removeSongFromPlaylist(selectedPlaylist.id, song.id, index)}
+                                                    className="bg-red-500 px-3 py-1 rounded hover:scale-105 active:scale-95 transition-transform duration-200 text-xs sm:text-sm"
+                                                >
+                                                    Remove
+                                                </button>
+                                            </div>
+                                        </li>
+                                    ))
+                                ) : (
+                                    <li className="text-gray-400 text-sm sm:text-base">No songs in this playlist</li>
+                                )}
+                            </ul>
+                            <h3 className="text-base sm:text-lg md:text-xl mb-2">Add Songs</h3>
+                            <input
+                                type="text"
+                                value={songSearch}
+                                onChange={(e) => setSongSearch(e.target.value)}
+                                className="w-full p-2 mb-4 bg-gray-700 rounded text-white text-sm sm:text-base"
+                                placeholder="Search songs..."
+                            />
+                            {filteredSongs.length > 0 ? (
+                                <ul className="max-h-60 overflow-y-auto">
+                                    {filteredSongs.map((song, index) => (
+                                        <li
+                                            key={song.id}
+                                            className="mb-2 flex justify-between items-center transition-all duration-200"
+                                        >
+                                            <span className="text-sm sm:text-base">{song.title} - {song.artist}</span>
+                                            <button
+                                                onClick={() => addSongToPlaylist(selectedPlaylist.id, song)}
+                                                className="bg-green-500 text-black px-3 py-1 rounded hover:scale-105 active:scale-95 transition-transform duration-200 text-xs sm:text-sm"
+                                            >
+                                                Add
+                                            </button>
+                                        </li>
+                                    ))}
+                                </ul>
+                            ) : (
+                                <p className="text-gray-400 text-sm sm:text-base">No songs match your search</p>
+                            )}
+                        </div>
+                    )}
+                </section>
+            );
+        }
+
+        // Followed Playlists Screen
+        function FollowedPlaylistsScreen({ data, setData, notify }) {
+            const [selectedPlaylist, setSelectedPlaylist] = useState(null);
+            const [search, setSearch] = useState("");
+
+            useEffect(() => {
+                if (selectedPlaylist) {
+                    const updatedPlaylist = data.followedPlaylists.find(p => p.id === selectedPlaylist.id) ||
+                                          data.availablePlaylists.find(p => p.id === selectedPlaylist.id);
+                    if (updatedPlaylist) {
+                        setSelectedPlaylist(updatedPlaylist);
+                    } else {
+                        setSelectedPlaylist(null);
+                    }
+                }
+            }, [data.followedPlaylists, data.availablePlaylists]);
+
+            const followPlaylist = (playlist) => {
+                try {
+                    if (!data.followedPlaylists.some(p => p.id === playlist.id)) {
+                        setData({
+                            ...data,
+                            followedPlaylists: [...data.followedPlaylists, playlist],
+                            availablePlaylists: data.availablePlaylists.filter(p => p.id !== playlist.id)
+                        });
+                        notify(`Followed playlist "${playlist.name}".`);
+                    }
+                } catch (e) {
+                    console.error('Error following playlist:', e);
+                    notify('Failed to follow playlist.');
+                }
+            };
+
+            const unfollowPlaylist = (playlistId) => {
+                try {
+                    const playlist = data.followedPlaylists.find(p => p.id === playlistId);
+                    if (playlist) {
+                        setData({
+                            ...data,
+                            followedPlaylists: data.followedPlaylists.filter(p => p.id !== playlistId),
+                            availablePlaylists: [...data.availablePlaylists, playlist]
+                        });
+                        if (selectedPlaylist?.id === playlistId) setSelectedPlaylist(null);
+                        notify(`Unfollowed playlist "${playlist.name}".`);
+                    }
+                } catch (e) {
+                    console.error('Error unfollowing playlist:', e);
+                    notify('Failed to unfollow playlist.');
+                }
+            };
+
+            const handlePlaylistClick = (playlist) => {
+                setSelectedPlaylist(playlist);
+                notify(`Viewing songs in "${playlist.name}".`);
+            };
+
+            const filteredPlaylists = data.availablePlaylists.filter(playlist =>
+                playlist.name.toLowerCase().includes(search.toLowerCase())
+            );
+
+            return (
+                <section className="container mx-auto px-4 sm:px-6 py-6 transition-opacity duration-300 opacity-100">
+                    <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-6">Followed Playlists</h1>
+                    <div className="bg-gray-800 p-4 sm:p-6 rounded-lg">
+                        <h2 className="text-lg sm:text-xl md:text-2xl mb-4">Your Followed Playlists</h2>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+                            {data.followedPlaylists.map(playlist => (
+                                <div
+                                    key={playlist.id}
+                                    className={`bg-gray-900 p-4 rounded-lg cursor-pointer hover:scale-105 transition-all duration-200 ${selectedPlaylist?.id === playlist.id ? 'border-2 border-green-500' : ''}`}
+                                    onClick={() => handlePlaylistClick(playlist)}
+                                >
+                                    <h3 className="text-base sm:text-lg font-semibold">{playlist.name}</h3>
+                                    <p className="text-gray-400 text-xs sm:text-sm">By {playlist.creator}</p>
+                                    <button
+                                        onClick={(e) => { e.stopPropagation(); unfollowPlaylist(playlist.id); }}
+                                        className="bg-red-500 px-3 py-1 mt-2 rounded hover:scale-105 active:scale-95 transition-transform duration-200 text-xs sm:text-sm"
+                                    >
+                                        Unfollow
+                                    </button>
+                                </div>
+                            ))}
+                        </div>
+                        {selectedPlaylist && (
+                            <div className="mt-6 bg-gray-900 p-4 sm:p-6 rounded-lg">
+                                <h3 className="text-base sm:text-lg md:text-xl mb-2">{selectedPlaylist.name} (Read-Only)</h3>
+                                <ul className="max-h-60 overflow-y-auto">
+                                    {selectedPlaylist.songs.length > 0 ? (
+                                        selectedPlaylist.songs.map(song => (
+                                            <li key={song.id} className="mb-2 text-sm sm:text-base">
+                                                {song.title} - {song.artist}
+                                            </li>
+                                        ))
+                                    ) : (
+                                        <li className="text-gray-400 text-sm sm:text-base">No songs in this playlist</li>
+                                    )}
+                                </ul>
+                            </div>
+                        )}
+                        <h2 className="text-lg sm:text-xl md:text-2xl mt-6 mb-4">Discover Playlists</h2>
+                        <input
+                            type="text"
+                            value={search}
+                            onChange={(e) => setSearch(e.target.value)}
+                            className="w-full p-2 mb-4 bg-gray-700 rounded text-white text-sm sm:text-base"
+                            placeholder="Search playlists..."
+                        />
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+                            {filteredPlaylists.map(playlist => (
+                                <div
+                                    key={playlist.id}
+                                    className={`bg-gray-900 p-4 rounded-lg cursor-pointer hover:scale-105 transition-all duration-200 ${selectedPlaylist?.id === playlist.id ? 'border-2 border-green-500' : ''}`}
+                                    onClick={() => handlePlaylistClick(playlist)}
+                                >
+                                    <h3 className="text-base sm:text-lg font-semibold">{playlist.name}</h3>
+                                    <p className="text-gray-400 text-xs sm:text-sm">By {playlist.creator}</p>
+                                    <button
+                                        onClick={(e) => { e.stopPropagation(); followPlaylist(playlist); }}
+                                        className="bg-green-500 text-black px-3 py-1 mt-2 rounded hover:scale-105 active:scale-95 transition-transform duration-200 text-xs sm:text-sm"
+                                    >
+                                        Follow
+                                    </button>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                </section>
+            );
+        }
+
+        // Artists Screen
+        function ArtistsScreen({ data, setData, notify }) {
+            const [selectedArtist, setSelectedArtist] = useState(null);
+            const [search, setSearch] = useState("");
+
+            const followArtist = (artist) => {
+                try {
+                    if (!data.followedArtists.some(a => a.id === artist.id)) {
+                        setData({
+                            ...data,
+                            followedArtists: [...data.followedArtists, artist],
+                            availableArtists: data.availableArtists.filter(a => a.id !== artist.id)
+                        });
+                        notify(`Followed artist "${artist.name}".`);
+                    }
+                } catch (e) {
+                    console.error('Error following artist:', e);
+                    notify('Failed to follow artist.');
+                }
+            };
+
+            const unfollowArtist = (artistId) => {
+                try {
+                    const artist = data.followedArtists.find(a => a.id === artistId);
+                    if (artist) {
+                        setData({
+                            ...data,
+                            followedArtists: data.followedArtists.filter(a => a.id !== artistId),
+                            availableArtists: [...data.availableArtists, artist]
+                        });
+                        notify(`Unfollowed artist "${artist.name}".`);
+                    }
+                } catch (e) {
+                    console.error('Error unfollowing artist:', e);
+                    notify('Failed to unfollow artist.');
+                }
+            };
+
+            const handleArtistClick = (artist) => {
+                setSelectedArtist(artist);
+                notify(`Viewing songs by "${artist.name}".`);
+            };
+
+            const filteredArtists = data.availableArtists.filter(artist =>
+                artist.name.toLowerCase().includes(search.toLowerCase())
+            );
+
+            const artistSongs = selectedArtist
+                ? data.availableSongs.filter(song => song.artist === selectedArtist.name)
+                : [];
+
+            return (
+                <section className="container mx-auto px-4 sm:px-6 py-6 transition-opacity duration-300 opacity-100">
+                    <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-6">Artists</h1>
+                    <div className="bg-gray-800 p-4 sm:p-6 rounded-lg">
+                        <h2 className="text-lg sm:text-xl md:text-2xl mb-4">Followed Artists</h2>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+                            {data.followedArtists.map(artist => (
+                                <div
+                                    key={artist.id}
+                                    className={`bg-gray-900 p-4 rounded-lg cursor-pointer hover:scale-105 transition-all duration-200 ${selectedArtist?.id === artist.id ? 'border-2 border-green-500' : ''}`}
+                                    onClick={() => handleArtistClick(artist)}
+                                >
+                                    <h3 className="text-base sm:text-lg font-semibold">{artist.name}</h3>
+                                    <p className="text-gray-400 text-xs sm:text-sm">Genre: {artist.genre}</p>
+                                    <button
+                                        onClick={(e) => { e.stopPropagation(); unfollowArtist(artist.id); }}
+                                        className="bg-red-500 px-3 py-1 mt-2 rounded hover:scale-105 active:scale-95 transition-transform duration-200 text-xs sm:text-sm"
+                                    >
+                                        Unfollow
+                                    </button>
+                                </div>
+                            ))}
+                        </div>
+                        {selectedArtist && (
+                            <div className="mt-6 bg-gray-900 p-4 sm:p-6 rounded-lg">
+                                <h3 className="text-base sm:text-lg md:text-xl mb-2">Songs by {selectedArtist.name} (Read-Only)</h3>
+                                <ul className="max-h-60 overflow-y-auto">
+                                    {artistSongs.length > 0 ? (
+                                        artistSongs.map(song => (
+                                            <li key={song.id} className="mb-2 text-sm sm:text-base">
+                                                {song.title} - {song.genre}
+                                            </li>
+                                        ))
+                                    ) : (
+                                        <li className="text-gray-400 text-sm sm:text-base">No songs available for this artist</li>
+                                    )}
+                                </ul>
+                            </div>
+                        )}
+                        <h2 className="text-lg sm:text-xl md:text-2xl mt-6 mb-4">Discover Artists</h2>
+                        <input
+                            type="text"
+                            value={search}
+                            onChange={(e) => setSearch(e.target.value)}
+                            className="w-full p-2 mb-4 bg-gray-700 rounded text-white text-sm sm:text-base"
+                            placeholder="Search artists..."
+                        />
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+                            {filteredArtists.map(artist => (
+                                <div
+                                    key={artist.id}
+                                    className={`bg-gray-900 p-4 rounded-lg cursor-pointer hover:scale-105 transition-all duration-200 ${selectedArtist?.id === artist.id ? 'border-2 border-green-500' : ''}`}
+                                    onClick={() => handleArtistClick(artist)}
+                                >
+                                    <h3 className="text-base sm:text-lg font-semibold">{artist.name}</h3>
+                                    <p className="text-gray-400 text-xs sm:text-sm">Genre: {artist.genre}</p>
+                                    <button
+                                        onClick={(e) => { e.stopPropagation(); followArtist(artist); }}
+                                        className="bg-green-500 text-black px-3 py-1 mt-2 rounded hover:scale-105 active:scale-95 transition-transform duration-200 text-xs sm:text-sm"
+                                    >
+                                        Follow
+                                    </button>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                </section>
+            );
+        }
+
+        // Favourites Screen
+        function FavouritesScreen({ data, setData, notify }) {
+            const [songSearch, setSongSearch] = useState("");
+
+            const addSongToFavorites = (song) => {
+                try {
+                    if (!data.favorites.some(s => s.id === song.id)) {
+                        setData({
+                            ...data,
+                            favorites: [...data.favorites, song],
+                            availableSongs: data.availableSongs.filter(s => s.id !== song.id)
+                        });
+                        notify(`Song "${song.title}" added to Favourites.`);
+                    } else {
+                        notify(`Song "${song.title}" is already in Favourites.`);
+                    }
+                } catch (e) {
+                    console.error('Error adding song to favorites:', e);
+                    notify('Failed to add song to Favourites.');
+                }
+            };
+
+            const removeSongFromFavorites = (songId) => {
+                try {
+                    const song = data.favorites.find(s => s.id === songId);
+                    if (song) {
+                        setData({
+                            ...data,
+                            favorites: data.favorites.filter(s => s.id !== songId),
+                            availableSongs: [...data.availableSongs, song]
+                        });
+                        notify(`Song "${song.title}" removed from Favourites.`);
+                    }
+                } catch (e) {
+                    console.error('Error removing song from favorites:', e);
+                    notify('Failed to remove song from Favourites.');
+                }
+            };
+
+            const filteredSongs = data.availableSongs.filter(song =>
+                song.title.toLowerCase().includes(songSearch.toLowerCase())
+            );
+
+            return (
+                <section className="container mx-auto px-4 sm:px-6 py-6 transition-opacity duration-300 opacity-100">
+                    <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-6">Favourites Playlist</h1>
+                    <div className="bg-gray-800 p-4 sm:p-6 rounded-lg">
+                        <h2 className="text-lg sm:text-xl md:text-2xl mb-4">Favourites Playlist</h2>
+                        <input
+                            type="text"
+                            value={songSearch}
+                            onChange={(e) => setSongSearch(e.target.value)}
+                            className="w-full p-2 mb-4 bg-gray-700 rounded text-white text-sm sm:text-base"
+                            placeholder="Search songs..."
+                        />
+                        <ul className="max-h-60 overflow-y-auto">
+                            {data.favorites.map((song, index) => (
+                                <li
+                                    key={song.id}
+                                    className="mb-2 flex justify-between items-center transition-all duration-200"
+                                >
+                                    <span className="text-sm sm:text-base">{song.title} - {song.artist}</span>
+                                    <button
+                                        onClick={() => removeSongFromFavorites(song.id)}
+                                        className="bg-red-500 px-3 py-1 rounded hover:scale-105 active:scale-95 transition-transform duration-200 text-xs sm:text-sm"
+                                    >
+                                        Remove
+                                    </button>
+                                </li>
+                            ))}
+                        </ul>
+                        {filteredSongs.length > 0 && (
+                            <>
+                                <h3 className="text-base sm:text-lg md:text-xl mt-4 mb-2">Add Songs</h3>
+                                <ul className="max-h-60 overflow-y-auto">
+                                    {filteredSongs.map((song, index) => (
+                                        <li
+                                            key={song.id}
+                                            className="mb-2 flex justify-between items-center transition-all duration-200"
+                                        >
+                                            <span className="text-sm sm:text-base">{song.title} - {song.artist}</span>
+                                            <button
+                                                onClick={() => addSongToFavorites(song)}
+                                                className="bg-green-500 text-black px-3 py-1 rounded hover:scale-105 active:scale-95 transition-transform duration-200 text-xs sm:text-sm"
+                                            >
+                                                Add
+                                            </button>
+                                        </li>
+                                    ))}
+                                </ul>
+                            </>
+                        )}
+                    </div>
+                </section>
+            );
+        }
+
+        // Profile Screen (FR09, FR13, FR14, FR24)
+        function ProfileScreen() {
+            return (
+                <section className="container mx-auto px-4 sm:px-6 py-6 transition-opacity duration-300 opacity-100">
+                    <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-6">Profile</h1>
+                    <div className="bg-gray-800 p-4 sm:p-6 rounded-lg">
+                        <p className="text-sm sm:text-base">User profile information coming soon!</p>
+                    </div>
+                </section>
+            );
+        }
+
+        // Create Playlist Modal (FR04)
+        function CreatePlaylistModal({ show, close, createPlaylist, availableSongs, notify }) {
+            const [newPlaylistName, setNewPlaylistName] = useState("");
+            const [maxSize, setMaxSize] = useState(50);
+            const [songSearch, setSongSearch] = useState("");
+            const [selectedSongs, setSelectedSongs] = useState([]);
+
+            if (!show) return null;
+
+            const toggleSongSelection = (song) => {
+                try {
+                    if (selectedSongs.some(s => s.id === song.id)) {
+                        setSelectedSongs(selectedSongs.filter(s => s.id !== song.id));
+                    } else {
+                        if (selectedSongs.length < maxSize) {
+                            setSelectedSongs([...selectedSongs, song]);
+                        } else {
+                            notify(`Cannot add more songs: Max size is ${maxSize}.`);
+                        }
+                    }
+                } catch (e) {
+                    console.error('Error toggling song:', e);
+                    notify('Failed to update song selection.');
+                }
+            };
+
+            const filteredSongs = availableSongs.filter(song =>
+                song.title.toLowerCase().includes(songSearch.toLowerCase())
+            );
+
+            const handleCreate = () => {
+                try {
+                    if (newPlaylistName.trim()) {
+                        createPlaylist(newPlaylistName, maxSize, selectedSongs, []);
+                        setNewPlaylistName("");
+                        setMaxSize(50);
+                        setSongSearch("");
+                        setSelectedSongs([]);
+                        close();
+                    } else {
+                        notify('Playlist name cannot be empty.');
+                    }
+                } catch (e) {
+                    console.error('Error creating playlist:', e);
+                    notify('Failed to create playlist.');
+                }
+            };
+
+            const handleCancel = () => {
+                setNewPlaylistName("");
+                setMaxSize(50);
+                setSongSearch("");
+                setSelectedSongs([]);
+                close();
+            };
+
+            return (
+                <div className={`fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 transition-all duration-300 ${show ? 'opacity-100 scale-100' : 'opacity-0 scale-95'}`}>
+                    <div className="bg-gray-800 p-4 sm:p-6 rounded-lg w-full sm:w-3/4 md:w-1/3 max-h-[90vh] overflow-y-auto">
+                        <h2 className="text-lg sm:text-xl md:text-2xl mb-4">Create New Playlist</h2>
+                        <input
+                            type="text"
+                            value={newPlaylistName}
+                            onChange={(e) => setNewPlaylistName(e.target.value)}
+                            className="w-full p-2 mb-4 bg-gray-700 rounded text-white text-sm sm:text-base"
+                            placeholder="Playlist Name"
+                        />
+                        <div className="mb-4">
+                            <label className="block mb-2 text-sm sm:text-base">Max Size</label>
+                            <input
+                                type="number"
+                                value={maxSize}
+                                onChange={(e) => setMaxSize(parseInt(e.target.value) || 50)}
+                                className="w-full p-2 bg-gray-700 rounded text-white text-sm sm:text-base"
+                                min="1"
+                                max="100"
+                            />
+                        </div>
+                        <h3 className="text-base sm:text-lg md:text-xl mb-2">Add Songs</h3>
+                        <input
+                            type="text"
+                            value={songSearch}
+                            onChange={(e) => setSongSearch(e.target.value)}
+                            className="w-full p-2 mb-4 bg-gray-700 rounded text-white text-sm sm:text-base"
+                            placeholder="Search songs..."
+                        />
+                        <ul className="mb-4 max-h-60 overflow-y-auto">
+                            {filteredSongs.length > 0 ? (
+                                filteredSongs.map(song => (
+                                    <li key={song.id} className="mb-2 flex justify-between items-center transition-all duration-200">
+                                        <span className="text-sm sm:text-base">{song.title} - {song.artist}</span>
+                                        <button
+                                            onClick={() => toggleSongSelection(song)}
+                                            className={`px-3 py-1 rounded text-xs sm:text-sm ${selectedSongs.some(s => s.id === song.id) ? 'bg-gray-500' : 'bg-green-500 text-black hover:scale-105 active:scale-95 transition-transform duration-200'}`}
+                                            disabled={selectedSongs.length >= maxSize && !selectedSongs.some(s => s.id === song.id)}
+                                        >
+                                            {selectedSongs.some(s => s.id === song.id) ? "Remove" : "Add"}
+                                        </button>
+                                    </li>
+                                ))
+                            ) : (
+                                <li className="text-gray-400 text-sm sm:text-base">No songs match your search</li>
+                            )}
+                        </ul>
+                        <div className="flex justify-end space-x-4">
+                            <button
+                                onClick={handleCancel}
+                                className="bg-gray-500 px-4 py-2 rounded hover:scale-105 active:scale-95 transition-transform duration-200 text-sm sm:text-base"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={handleCreate}
+                                className="bg-green-500 text-black px-4 py-2 rounded hover:scale-105 active:scale-95 transition-transform duration-200 text-sm sm:text-base"
+                            >
+                                Create
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        // Edit Playlist Modal (FR04)
+        function EditPlaylistModal({ show, close, playlist, saveChanges, availableSongs, notify }) {
+            const [editPlaylistName, setEditPlaylistName] = useState(playlist ? playlist.name : "");
+            const [editedSongs, setEditedSongs] = useState(playlist ? [...playlist.songs] : []);
+            const [songSearch, setSongSearch] = useState("");
+            const [playingSongId, setPlayingSongId] = useState(null);
+            const [rules, setRules] = useState(playlist ? [...playlist.rules] : []);
+
+            if (!show || !playlist) return null;
+
+            const addSong = (song) => {
+                try {
+                    if (editedSongs.length >= playlist.maxSize) {
+                        notify(`Cannot add song: Max size (${playlist.maxSize}) reached.`);
+                        return;
+                    }
+                    setEditedSongs([...editedSongs, song]);
+                    notify(`Song "${song.title}" added.`);
+                } catch (e) {
+                    console.error('Error adding song:', e);
+                    notify('Failed to add song.');
+                }
+            };
+
+            const removeSong = (songId, index) => {
+                try {
+                    const song = editedSongs[index];
+                    setEditedSongs(editedSongs.filter((_, i) => i !== index));
+                    notify(`Song "${song.title}" removed.`);
+                } catch (e) {
+                    console.error('Error removing song:', e);
+                    notify('Failed to remove song.');
+                }
+            };
+
+            const playSong = (song) => {
+                if (playingSongId === song.id) {
+                    setPlayingSongId(null);
+                    console.log(`Stopped: ${song.title} - ${song.artist}`);
+                } else {
+                    setPlayingSongId(song.id);
+                    console.log(`Playing: ${song.title} - ${song.artist}`);
+                }
+            };
+
+            const addRule = (type, value) => {
+                try {
+                    setRules([...rules, { id: rules.length + 1, type, value }]);
+                    notify(`Rule "${type}: ${value}" added.`);
+                } catch (e) {
+                    console.error('Error adding rule:', e);
+                    notify('Failed to add rule.');
+                }
+            };
+
+            const removeRule = (ruleId) => {
+                try {
+                    const rule = rules.find(r => r.id === ruleId);
+                    setRules(rules.filter(r => r.id !== ruleId));
+                    notify(`Rule "${rule.type}: ${rule.value}" removed.`);
+                } catch (e) {
+                    console.error('Error removing rule:', e);
+                    notify('Failed to remove rule.');
+                }
+            };
+
+            const moveSongUp = (index) => {
+                try {
+                    if (index === 0) return;
+                    const newSongs = [...editedSongs];
+                    [newSongs[index - 1], newSongs[index]] = [newSongs[index], newSongs[index - 1]];
+                    setEditedSongs(newSongs);
+                    notify("Track order updated.");
+                } catch (e) {
+                    console.error('Error moving song up:', e);
+                    notify('Failed to update track order.');
+                }
+            };
+
+            const moveSongDown = (index) => {
+                try {
+                    if (index === editedSongs.length - 1) return;
+                    const newSongs = [...editedSongs];
+                    [newSongs[index], newSongs[index + 1]] = [newSongs[index + 1], newSongs[index]];
+                    setEditedSongs(newSongs);
+                    notify("Track order updated.");
+                } catch (e) {
+                    console.error('Error moving song down:', e);
+                    notify('Failed to update track order.');
+                }
+            };
+
+            const handleSave = () => {
+                try {
+                    saveChanges({
+                        ...playlist,
+                        name: editPlaylistName.trim() || playlist.name,
+                        songs: editedSongs,
+                        rules,
+                        lastUpdated: new Date().toISOString().split('T')[0],
+                        ruleHistory: [
+                            ...playlist.ruleHistory,
+                            `Modified on ${new Date().toISOString().split('T')[0]}`
+                        ]
+                    });
+                    close();
+                } catch (e) {
+                    console.error('Error saving playlist:', e);
+                    notify('Failed to save playlist.');
+                }
+            };
+
+            const filteredSongs = availableSongs.filter(song =>
+                song.title.toLowerCase().includes(songSearch.toLowerCase())
+            );
+
+            return (
+                <div className={`fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 transition-all duration-300 ${show ? 'opacity-100 scale-100' : 'opacity-0 scale-95'}`}>
+                    <div className="bg-gray-800 p-4 sm:p-6 rounded-lg w-full sm:w-3/4 md:w-1/2 max-h-[90vh] overflow-y-auto">
+                        <h2 className="text-lg sm:text-xl md:text-2xl mb-4">Edit Playlist: {playlist.name}</h2>
+                        <input
+                            type="text"
+                            value={editPlaylistName}
+                            onChange={(e) => setEditPlaylistName(e.target.value)}
+                            className="w-full p-2 mb-4 bg-gray-700 rounded text-white text-sm sm:text-base"
+                            placeholder="Playlist Name"
+                        />
+                        <h3 className="text-base sm:text-lg md:text-xl mb-2">Songs (Use Up/Down to Reorder)</h3>
+                        <ul className="mb-4 max-h-60 overflow-y-auto">
+                            {editedSongs.map((song, index) => (
+                                <li
+                                    key={`${song.id}-${index}`}
+                                    className="mb-2 flex justify-between items-center transition-all duration-200 bg-gray-700 p-2 rounded"
+                                >
+                                    <div className="flex items-center space-x-2">
+                                        <button
+                                            onClick={() => moveSongUp(index)}
+                                            disabled={index === 0}
+                                            className={`px-2 py-1 rounded text-xs sm:text-sm ${index === 0 ? 'bg-gray-500 cursor-not-allowed' : 'bg-blue-500 hover:scale-105 active:scale-95 transition-transform duration-200'}`}
+                                        >
+                                            ↑
+                                        </button>
+                                        <button
+                                            onClick={() => moveSongDown(index)}
+                                            disabled={index === editedSongs.length - 1}
+                                            className={`px-2 py-1 rounded text-xs sm:text-sm ${index === editedSongs.length - 1 ? 'bg-gray-500 cursor-not-allowed' : 'bg-blue-500 hover:scale-105 active:scale-95 transition-transform duration-200'}`}
+                                        >
+                                            ↓
+                                        </button>
+                                        <span className="text-sm sm:text-base">{song.title} - {song.artist}</span>
+                                    </div>
+                                    <div className="flex space-x-2">
+                                        <button
+                                            onClick={() => playSong(song)}
+                                            className={`px-3 py-1 rounded text-xs sm:text-sm transition-all duration-200 ${playingSongId === song.id ? 'bg-green-600' : 'bg-green-500 text-black hover:scale-105 active:scale-95'}`}
+                                        >
+                                            {playingSongId === song.id ? 'Playing' : 'Play'}
+                                        </button>
+                                        <button
+                                            onClick={() => removeSong(song.id, index)}
+                                            className="bg-red-500 px-3 py-1 rounded hover:scale-105 active:scale-95 transition-transform duration-200 text-xs sm:text-sm"
+                                        >
+                                            Remove
+                                        </button>
+                                    </div>
+                                </li>
+                            ))}
+                        </ul>
+                        <h3 className="text-base sm:text-lg md:text-xl mb-2">Add Songs</h3>
+                        <input
+                            type="text"
+                            value={songSearch}
+                            onChange={(e) => setSongSearch(e.target.value)}
+                            className="w-full p-2 mb-4 bg-gray-700 rounded text-white text-sm sm:text-base"
+                            placeholder="Search songs..."
+                        />
+                        <ul className="mb-4 max-h-60 overflow-y-auto">
+                            {filteredSongs.map(song => (
+                                <li key={song.id} className="mb-2 flex justify-between items-center transition-all duration-200">
+                                    <span className="text-sm sm:text-base">{song.title} - {song.artist}</span>
+                                    <button
+                                        onClick={() => addSong(song)}
+                                        className="bg-green-500 text-black px-3 py-1 rounded hover:scale-105 active:scale-95 transition-transform duration-200 text-xs sm:text-sm"
+                                    >
+                                        Add
+                                    </button>
+                                </li>
+                            ))}
+                        </ul>
+                        <h3 className="text-base sm:text-lg md:text-xl mb-2">Rules</h3>
+                        <div className="mb-4">
+                            <select
+                                onChange={(e) => {
+                                    if (e.target.value) addRule("genre", e.target.value);
+                                    e.target.value = "";
+                                }}
+                                className="w-full p-2 bg-gray-700 rounded text-white text-sm sm:text-base"
+                            >
+                                <option value="">Select Genre Rule</option>
+                                <option value="Pop">Pop</option>
+                                <option value="Rock">Rock</option>
+                                <option value="Jazz">Jazz</option>
+                                <option value="Hip-Hop">Hip-Hop</option>
+                                <option value="Electronic">Electronic</option>
+                            </select>
+                            <ul className="mt-2">
+                                {rules.map(rule => (
+                                    <li key={rule.id} className="mb-2 flex justify-between items-center">
+                                        <span className="text-sm sm:text-base">{rule.type}: {rule.value}</span>
+                                        <button
+                                            onClick={() => removeRule(rule.id)}
+                                            className="bg-red-500 px-3 py-1 rounded hover:scale-105 active:scale-95 transition-transform duration-200 text-xs sm:text-sm"
+                                        >
+                                            Remove
+                                        </button>
+                                    </li>
+                                ))}
+                            </ul>
+                        </div>
+                        <div className="flex justify-end space-x-4 mt-4">
+                            <button
+                                onClick={close}
+                                className="bg-gray-500 px-4 py-2 rounded hover:scale-105 active:scale-95 transition-transform duration-200 text-sm sm:text-base"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={handleSave}
+                                className="bg-green-500 text-black px-4 py-2 rounded hover:scale-105 active:scale-95 transition-transform duration-200 text-sm sm:text-base"
+                            >
+                                Save
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        // Create Rule-Based Playlist Modal (FR05)
+        function CreateRuleBasedPlaylistModal({ show, close, createRuleBasedPlaylist, ruleTemplates, notify }) {
+            const [rulePlaylistName, setRulePlaylistName] = useState("");
+            const [selectedRule, setSelectedRule] = useState("");
+
+            if (!show) return null;
+
+            const handleCreate = () => {
+                try {
+                    if (rulePlaylistName.trim()) {
+                        const rules = selectedRule
+                            ? [{ id: 1, type: "genre", value: selectedRule }]
+                            : [];
+                        createRuleBasedPlaylist(rulePlaylistName, rules);
+                        setRulePlaylistName("");
+                        setSelectedRule("");
+                        close();
+                    } else {
+                        notify('Playlist name cannot be empty.');
+                    }
+                } catch (e) {
+                    console.error('Error creating rule-based playlist:', e);
+                    notify('Failed to create rule-based playlist.');
+                }
+            };
+
+            return (
+                <div className={`fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 transition-all duration-300 ${show ? 'opacity-100 scale-100' : 'opacity-0 scale-95'}`}>
+                    <div className="bg-gray-800 p-4 sm:p-6 rounded-lg w-full sm:w-3/4 md:w-1/3 max-h-[90vh] overflow-y-auto">
+                        <h2 className="text-lg sm:text-xl md:text-2xl mb-4">Create Rule-Based Playlist</h2>
+                        <input
+                            type="text"
+                            value={rulePlaylistName}
+                            onChange={(e) => setRulePlaylistName(e.target.value)}
+                            className="w-full p-2 mb-4 bg-gray-700 rounded text-white text-sm sm:text-base"
+                            placeholder="Playlist Name"
+                        />
+                        <select
+                            value={selectedRule}
+                            onChange={(e) => setSelectedRule(e.target.value)}
+                            className="w-full p-2 mb-4 bg-gray-700 rounded text-white text-sm sm:text-base"
+                        >
+                            <option value="">Select Genre Rule (Optional)</option>
+                            <option value="Pop">Pop</option>
+                            <option value="Rock">Rock</option>
+                            <option value="Jazz">Jazz</option>
+                            <option value="Hip-Hop">Hip-Hop</option>
+                            <option value="Electronic">Electronic</option>
+                        </select>
+                        <div className="flex justify-end space-x-4">
+                            <button
+                                onClick={() => { setRulePlaylistName(""); setSelectedRule(""); close(); }}
+                                className="bg-gray-500 px-4 py-2 rounded hover:scale-105 active:scale-95 transition-transform duration-200 text-sm sm:text-base"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={handleCreate}
+                                className="bg-green-500 text-black px-4 py-2 rounded hover:scale-105 active:scale-95 transition-transform duration-200 text-sm sm:text-base"
+                            >
+                                Create
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        // Main App Component
+        function App() {
+            const [data, setData] = useState(initialData);
+            const [currentScreen, setCurrentScreen] = useState('home');
+            const [isLoggedIn, setIsLoggedIn] = useState(false);
+            const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+            const [showCreateModal, setShowCreateModal] = useState(false);
+            const [showEditModal, setShowEditModal] = useState(null);
+            const [showRuleModal, setShowRuleModal] = useState(false);
+            const [notifications, setNotifications] = useState([]);
+
+            const createPlaylist = (name, maxSize, songs, rules) => {
+                try {
+                    setData({
+                        ...data,
+                        playlists: [...data.playlists, {
+                            id: data.playlists.length + 1,
+                            name,
+                            songs: songs || [],
+                            rules: rules || [],
+                            maxSize,
+                            lastUpdated: songs?.length > 0 ? new Date().toISOString().split('T')[0] : null,
+                            ruleHistory: rules?.length > 0 ? [`Created with rules on ${new Date().toISOString().split('T')[0]}`] : []
+                        }]
+                    });
+                    notify(`Playlist "${name}" created.`);
+                } catch (e) {
+                    console.error('Error creating playlist:', e);
+                    notify('Failed to create playlist.');
+                }
+            };
+
+            const savePlaylistChanges = (updatedPlaylist) => {
+                try {
+                    setData({
+                        ...data,
+                        playlists: data.playlists.map(p =>
+                            p.id === updatedPlaylist.id
+                                ? updatedPlaylist
+                                : p
+                        )
+                    });
+                    notify(`Playlist "${updatedPlaylist.name}" updated.`);
+                } catch (e) {
+                    console.error('Error saving playlist changes:', e);
+                    notify('Failed to update playlist.');
+                }
+            };
+
+            const removeSongFromPlaylist = (playlistId, songId, index) => {
+                try {
+                    const playlist = data.playlists.find(p => p.id === playlistId);
+                    if (!playlist) throw new Error('Playlist not found');
+                    const newSongs = [...playlist.songs];
+                    const song = newSongs.splice(index, 1)[0];
+                    setData({
+                        ...data,
+                        playlists: data.playlists.map(p =>
+                            p.id === playlistId
+                                ? { ...p, songs: newSongs }
+                                : p
+                        ),
+                        availableSongs: [...data.availableSongs, song]
+                    });
+                    notify(`Song removed from "${playlist.name}".`);
+                } catch (e) {
+                    console.error('Error removing song:', e);
+                    notify('Failed to remove song.');
+                }
+            };
+
+            const addSongToPlaylist = (playlistId, song) => {
+                try {
+                    const playlist = data.playlists.find(p => p.id === playlistId);
+                    if (!playlist) throw new Error('Playlist not found');
+                    if (playlist.songs.length >= playlist.maxSize) {
+                        notify(`Cannot add song: Max size (${playlist.maxSize}) reached.`);
+                        return;
+                    }
+                    setData({
+                        ...data,
+                        playlists: data.playlists.map(p =>
+                            p.id === playlistId
+                                ? { ...p, songs: [...p.songs, song], lastUpdated: new Date().toISOString().split('T')[0] }
+                                : p
+                        ),
+                        availableSongs: data.availableSongs.filter(s => s.id !== song.id)
+                    });
+                    notify(`Song "${song.title}" added to "${playlist.name}".`);
+                } catch (e) {
+                    console.error('Error adding song:', e);
+                    notify('Failed to add song.');
+                }
+            };
+
+            const toggleFavoritePlaylist = (playlistId) => {
+                try {
+                    const isFavorite = data.favoritePlaylists.includes(playlistId);
+                    const playlist = data.playlists.find(p => p.id === playlistId);
+                    if (!playlist) throw new Error('Playlist not found');
+                    setData({
+                        ...data,
+                        favoritePlaylists: isFavorite
+                            ? data.favoritePlaylists.filter(id => id !== playlistId)
+                            : [...data.favoritePlaylists, playlistId]
+                    });
+                    notify(isFavorite
+                        ? `Playlist "${playlist.name}" removed from favorites.`
+                        : `Playlist "${playlist.name}" added to favorites.`);
+                } catch (e) {
+                    console.error('Error toggling favorite playlist:', e);
+                    notify('Failed to update favorite status.');
+                }
+            };
+
+            const createRuleBasedPlaylist = (name, rules) => {
+                try {
+                    setData({
+                        ...data,
+                        playlists: [...data.playlists, {
+                            id: data.playlists.length + 1,
+                            name,
+                            songs: [],
+                            rules,
+                            maxSize: 50,
+                            lastUpdated: null,
+                            ruleHistory: rules.length > 0 ? [`Created with rules on ${new Date().toISOString().split('T')[0]}`] : []
+                        }]
+                    });
+                    notify(`Rule-based playlist "${name}" created.`);
+                } catch (e) {
+                    console.error('Error creating rule-based playlist:', e);
+                    notify('Failed to create rule-based playlist.');
+                }
+            };
+
+            const notify = (message) => {
+                const id = Date.now();
+                setNotifications(prev => [...prev, { id, message }]);
+                setTimeout(() => {
+                    setNotifications(prev => prev.filter(n => n.id !== id));
+                }, 5000);
+            };
+
+            return (
+                <div className="relative min-h-screen">
+                    {isLoggedIn && (
+                        <Sidebar
+                            setCurrentScreen={setCurrentScreen}
+                            setIsLoggedIn={setIsLoggedIn}
+                            isSidebarOpen={isSidebarOpen}
+                            setIsSidebarOpen={setIsSidebarOpen}
+                        />
+                    )}
+                    <main className={`${isLoggedIn ? 'ml-16 md:ml-64' : ''} transition-all duration-300`}>
+                        {!isLoggedIn ? (
+                            <LoginScreen setIsLoggedIn={setIsLoggedIn} />
+                        ) : (
+                            <>
+                                {currentScreen === 'home' && (
+                                    <HomeScreen
+                                        data={data}
+                                        setData={setData}
+                                        openRuleModal={() => setShowRuleModal(true)}
+                                    />
+                                )}
+                                {currentScreen === 'playlists' && (
+                                    <PlaylistsScreen
+                                        data={data}
+                                        setData={setData}
+                                        openCreateModal={() => setShowCreateModal(true)}
+                                        openEditModal={(playlist) => setShowEditModal(playlist)}
+                                        notify={notify}
+                                        addSongToPlaylist={addSongToPlaylist}
+                                        removeSongFromPlaylist={removeSongFromPlaylist}
+                                        toggleFavoritePlaylist={toggleFavoritePlaylist}
+                                    />
+                                )}
+                                {currentScreen === 'favourites' && (
+                                    <FavouritesScreen data={data} setData={setData} notify={notify} />
+                                )}
+                                {currentScreen === 'followedPlaylists' && (
+                                    <FollowedPlaylistsScreen data={data} setData={setData} notify={notify} />
+                                )}
+                                {currentScreen === 'artists' && (
+                                    <ArtistsScreen data={data} setData={setData} notify={notify} />
+                                )}
+                                {currentScreen === 'profile' && (
+                                    <ProfileScreen />
+                                )}
+                            </>
+                        )}
+                    </main>
+                    <CreatePlaylistModal
+                        show={showCreateModal}
+                        close={() => setShowCreateModal(false)}
+                        createPlaylist={createPlaylist}
+                        availableSongs={data.availableSongs}
+                        notify={notify}
+                    />
+                    <EditPlaylistModal
+                        show={!!showEditModal}
+                        close={() => setShowEditModal(null)}
+                        playlist={showEditModal}
+                        saveChanges={savePlaylistChanges}
+                        availableSongs={data.availableSongs}
+                        notify={notify}
+                    />
+                    <CreateRuleBasedPlaylistModal
+                        show={showRuleModal}
+                        close={() => setShowRuleModal(false)}
+                        createRuleBasedPlaylist={createRuleBasedPlaylist}
+                        ruleTemplates={data.ruleTemplates}
+                        notify={notify}
+                    />
+                    <div className="fixed bottom-4 right-4 space-y-2 max-w-[90%]">
+                        {notifications.map(n => (
+                            <div
+                                key={n.id}
+                                className="bg-green-500 text-black p-2 rounded shadow text-sm sm:text-base transition-all duration-300 translate-x-0 opacity-100"
+                            >
+                                {n.message}
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            );
+        }
+
+        // Render with error handling (FR26, FR31)
+        try {
+            console.log('Attempting to render React app...');
+            const root = ReactDOM.createRoot(document.getElementById('root'));
+            root.render(<App />);
+            console.log('React app rendered successfully.');
+        } catch (error) {
+            console.error('Failed to render React app:', error);
+            document.getElementById('root').innerHTML = `
+                <div className="text-red-500 p-6 text-center">
+                    <h1 className="text-2xl mb-4">Error Loading Application</h1>
+                    <p>Please try refreshing the page or check your internet connection.</p>
+                    <p>Details: ${error.message}</p>
+                </div>
+            `;
+        }
+    </script>
+</body>
+</html>
